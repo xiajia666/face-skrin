@@ -53,25 +53,34 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['JSON_AS_ASCII'] = False
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+def validate(args):
+    validations = {
+        'img_url': 'img_url is required',
+        'id': 'id is required'
+    }
+    for key, message in validations.items():
+        if key not in args:
+            return ValueError(message)
+
+
 
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-
 @app.route('/get_data', methods=['POST'])
 def get_data():
     res = []
     if request.method != 'POST':
         return jsonify({'error': 'Only POST requests are allowed'}), 400
+
+    if validate(request.json):
+        return jsonify({'error': 'Parameters {}'.format(validate(request.json))}), 400
     try:
         saveUrlPrefix = "skinrun-face/" + time.strftime('%Y%m%d', time.localtime()) + "/" + str(request.json["id"]) + "/" + \
                         time.strftime('%Y%m%d%H%M%S', time.localtime(time.time())) + "/" + str(request.json['img_original']) + "/" + \
                         str(request.json['img_type']) + "/"
-        print(saveUrlPrefix)
         img_url = request.json['img_url']
         local_file = (bucket.get_object(img_url)).read()
         img_array = np.asarray(bytearray(local_file), dtype=np.uint8)
