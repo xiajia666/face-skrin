@@ -80,7 +80,7 @@ def get_data():
 
     try:
         saveUrlPrefix = "skinrun-face/" + time.strftime('%Y%m%d', time.localtime()) + "/" + \
-                        time.strftime('%Y%m%d%H%M%S', time.localtime(time.time())) + "/" + str(request.json['img_original']) + "/" + \
+                          str(request.json['img_original']) + "/" + \
                         str(request.json['img_type']) + "/"
         img_url = request.json['img_url']
         local_file = (bucket.get_object(img_url)).read()
@@ -93,6 +93,9 @@ def get_data():
         img_byte_arr = io.BytesIO()
         image.save(img_byte_arr, format='JPEG')
         img_byte_arr = img_byte_arr.getvalue()
+        if bucket.object_exists(saveUrlPrefix + "RecognitionImg.jpg"):
+            # 删除文件
+            bucket.delete_object(saveUrlPrefix + "RecognitionImg.jpg")
         bucket.put_object(saveUrlPrefix + "RecognitionImg.jpg", img_byte_arr)
 
         # ------------------------- 肤色 -----------------------
@@ -103,6 +106,9 @@ def get_data():
         img_byte_arr = io.BytesIO()
         imageContour.save(img_byte_arr, format='JPEG')
         img_byte_arr = img_byte_arr.getvalue()
+        if bucket.object_exists(saveUrlPrefix + "ContourImg.jpg"):
+            # 删除文件
+            bucket.delete_object(saveUrlPrefix + "ContourImg.jpg")
         bucket.put_object(saveUrlPrefix + "ContourImg.jpg", img_byte_arr)
 
         # ------------------------- 敏感肌 -----------------------
@@ -110,6 +116,9 @@ def get_data():
         img_byte_arr = io.BytesIO()
         sensitiveSkinImg.save(img_byte_arr, format='JPEG')
         img_byte_arr = img_byte_arr.getvalue()
+        if bucket.object_exists(saveUrlPrefix + "sensitiveSkinImg.jpg"):
+            # 删除文件
+            bucket.delete_object(saveUrlPrefix + "sensitiveSkinImg.jpg")
         bucket.put_object(saveUrlPrefix + "sensitiveSkinImg.jpg", img_byte_arr)
 
         return jsonify({"status_code": "200",
