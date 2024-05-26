@@ -79,7 +79,7 @@ def get_data():
         return jsonify({'error': 'Parameters {}'.format(validate(request.json))}), 400
 
     try:
-        saveUrlPrefix = "skinrun-face/" + time.strftime('%Y%m%d', time.localtime()) + "/" + str(request.json["id"]) + "/" + \
+        saveUrlPrefix = "skinrun-face/" + time.strftime('%Y%m%d', time.localtime()) + "/" + \
                         time.strftime('%Y%m%d%H%M%S', time.localtime(time.time())) + "/" + str(request.json['img_original']) + "/" + \
                         str(request.json['img_type']) + "/"
         img_url = request.json['img_url']
