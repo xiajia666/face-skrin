@@ -183,16 +183,16 @@ class contour:
             # win.add_overlay(shape)
             for i in range(2, 17):
                 cv2.line(img, (shape.part(i - 1).x, shape.part(i - 1).y), (shape.part(i).x, shape.part(i).y), (0, 255, 0),
-                         1)
+                         10)
             for i in range(18, 22):
                 cv2.line(img, (shape.part(i - 1).x, shape.part(i - 1).y), (shape.part(i).x, shape.part(i).y), (0, 255, 0),
-                         1)
+                         10)
             for i in range(23, 27):
                 cv2.line(img, (shape.part(i - 1).x, shape.part(i - 1).y), (shape.part(i).x, shape.part(i).y), (0, 255, 0),
-                         1)
+                         10)
             for i in range(28, 36):
                 cv2.line(img, (shape.part(i - 1).x, shape.part(i - 1).y), (shape.part(i).x, shape.part(i).y), (0, 255, 0),
-                         1)
+                         10)
             # return res, img
             image = Image.fromarray(img)
             resContourPoints = resPoints[2:17] + resPoints[18:22] + resPoints[23:27] + resPoints[28:36]
