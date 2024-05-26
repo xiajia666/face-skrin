@@ -17,7 +17,7 @@ from numpy import shape
 from detectron2.engine import DefaultPredictor
 import base64
 import pickle
-from xj_train.utils import on_Image
+from utils import on_Image
 
 cfg_save_path = "OD_cfg.pickle"
 
@@ -77,6 +77,7 @@ def get_data():
 
     if validate(request.json):
         return jsonify({'error': 'Parameters {}'.format(validate(request.json))}), 400
+
     try:
         saveUrlPrefix = "skinrun-face/" + time.strftime('%Y%m%d', time.localtime()) + "/" + str(request.json["id"]) + "/" + \
                         time.strftime('%Y%m%d%H%M%S', time.localtime(time.time())) + "/" + str(request.json['img_original']) + "/" + \
@@ -86,13 +87,30 @@ def get_data():
         img_array = np.asarray(bytearray(local_file), dtype=np.uint8)
         img_np = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
         img_np = cv2.cvtColor(img_np, cv2.COLOR_BGR2RGB)
+
+        # ------------------------- 识别图像 -----------------------
         pred_boxes, pred_classes, pred_scores, image = on_Image(img_np, predictor)
-        bucket.put_object(saveUrlPrefix + "RecognitionImg.jpg", image.tobytes())
+        img_byte_arr = io.BytesIO()
+        image.save(img_byte_arr, format='JPEG')
+        img_byte_arr = img_byte_arr.getvalue()
+        bucket.put_object(saveUrlPrefix + "RecognitionImg.jpg", img_byte_arr)
+
+        # ------------------------- 肤色 -----------------------
         color = face_text.colorList().get_color(img_np, face_detect)  # 肤色
+
+        # ------------------------- 轮廓 -----------------------
         allPoints, contourPoints, imageContour = face_text.contour().contourImg(img_np, predictor_path)
-        bucket.put_object(saveUrlPrefix + "ContourImg.jpg", imageContour.tobytes())
+        img_byte_arr = io.BytesIO()
+        imageContour.save(img_byte_arr, format='JPEG')
+        img_byte_arr = img_byte_arr.getvalue()
+        bucket.put_object(saveUrlPrefix + "ContourImg.jpg", img_byte_arr)
+
+        # ------------------------- 敏感肌 -----------------------
         sensitiveSkinImg = face_text.sensitiveSkin().sensitiveSkinImg(img_np)
-        bucket.put_object(saveUrlPrefix + "sensitiveSkinImg.jpg", sensitiveSkinImg.tobytes())
+        img_byte_arr = io.BytesIO()
+        sensitiveSkinImg.save(img_byte_arr, format='JPEG')
+        img_byte_arr = img_byte_arr.getvalue()
+        bucket.put_object(saveUrlPrefix + "sensitiveSkinImg.jpg", img_byte_arr)
 
         return jsonify({"status_code": "200",
                         "message": "操作成功",
