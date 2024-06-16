@@ -1,6 +1,7 @@
 import numpy as np
 from PIL import Image
 from numpy import shape
+from PIL import Image, ImageDraw, ImageEnhance
 
 import json
 
@@ -107,13 +108,12 @@ def on_Image(image_path, predictor):
     # gray = cv2.cvtColor(v.get_image(), cv2.COLOR_BGR2GRAY)
     img_np = cv2.cvtColor(v.get_image(), cv2.COLOR_BGR2RGB)
 
-    # 对指定类别的皱纹进行特殊处理，加入索贝算子突出皱纹的纹路
-    # 这套逻辑有点问题，
+# -------------------------对指定类别的皱纹进行特殊处理，加入索贝算子突出皱纹的纹路---------------------------------------------------------
     loc = []  # 存放特定皱纹的矩形框坐标
     for box, class_name, scores in zip(getattr(outputs["instances"].pred_boxes, "tensor"),
                                        outputs["instances"].pred_classes,
                                        outputs["instances"].scores):
-        if class_name == 1 or 8 or 3:
+        if class_name == 3:   # 3表示眼袋
             loc.append(box)
     two_dim_coords = []
     for i in loc:
@@ -135,7 +135,7 @@ def on_Image(image_path, predictor):
         #         # 在这里对像素进行处理，这里示例为将像素设为纯黑色
         #         image[x, y] = (0, 0, 0)
         gray = cv2.cvtColor(image_path, cv2.COLOR_BGR2GRAY)
-        edges = cv2.Canny(gray[int(x1 / 2):int(x2 / 2), int(y1 / 2):int(y2 / 2)], 30, 10)  # 参数可以根据具体情况调整
+        edges = cv2.Canny(gray[int(x1 / 2):int(x2 / 2), int(y1 / 2):int(y2 / 2)], 30, 100)  # 参数可以根据具体情况调整
         coordinates = np.where(edges == 255)
         aa = img_np.shape[1] - coordinates[0] - x1 / 2
         bb = img_np.shape[0] - coordinates[1] - y1 / 2
@@ -144,8 +144,33 @@ def on_Image(image_path, predictor):
             # print(x,y)
             img_np[int(-y), int(-x)] = (255, 0, 0)
 
-    image = Image.fromarray(img_np)
 
+    height, width = img_np.shape[:2]
+    new_size = (width * 2, height * 2)
+    # 像素提高两倍，还原为输入图像相同的规格
+    img_np = cv2.resize(img_np, new_size, interpolation=cv2.INTER_NEAREST)
+
+
+# ----------------- 启动蒙版处理-----------------
+    # 创建一个全透明的图像
+    transparent_image = np.zeros((height * 2, width * 2, 3), dtype=np.uint8)
+    transparent_image[:, :, :] = 255  # 设置为全白，即完全不透明
+
+    # 根据框的位置来绘制蒙版
+    for i in getattr(outputs["instances"].pred_boxes, "tensor").cpu().numpy():
+        for x1, y1, x2, y2 in [i]:
+            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+            # 将框内的区域设置为完全不透明
+            transparent_image[y1:y2, x1:x2, :] = 255
+            mask = np.zeros_like(transparent_image)
+            mask[y1:y2, x1:x2, :] = 1
+            # 设置框外的区域透明度为90%
+            transparent_image = transparent_image * (1 - mask * 0.9) + mask * transparent_image # mask系数越大，透明度越小，0.9越小，越透明
+            transparent_image = transparent_image.astype(np.uint8)
+    # 将蒙版应用到图像
+    img_np = cv2.addWeighted(img_np, 1, transparent_image, 0.6, 0)
+
+    image = Image.fromarray(img_np)
     return pred_boxes, pred_classes, pred_scores, image
 
 
