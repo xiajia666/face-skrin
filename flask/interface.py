@@ -1,3 +1,4 @@
+import datetime
 import os
 import configparser
 import time
@@ -64,7 +65,9 @@ def validate(args):
             return ValueError(message)
 
 def setup_logging():
-    handler = RotatingFileHandler('./logs/app.log', maxBytes=10000, backupCount=3)
+    if not os.path.exists('./logs/{}/'.format(datetime.date.today())):
+        os.makedirs('./logs/{}/'.format(datetime.date.today()))
+    handler = RotatingFileHandler('./logs/{}/app.log'.format(datetime.date.today()), maxBytes=10000, backupCount=3)
     handler.setLevel(logging.ERROR)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     handler.setFormatter(formatter)
