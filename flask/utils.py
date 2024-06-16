@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import numpy
 
+
 def tensor_to_json(data):
     # 将张量移动到 CPU，并转换为 NumPy 数组
     tensor = data.cpu().detach().numpy()
@@ -30,19 +31,23 @@ def tensor_to_json(data):
     return tensor_json
 # 切换为图形界面显示的终端TkAgg
 matplotlib.use('TkAgg')
+
+
 def plot_samples(dataset_name, n=1):
     dataset_custom = DatasetCatalog.get(dataset_name)
     dataset_custom_metadata = MetadataCatalog.get(dataset_name)
 
     for s in random.sample(dataset_custom, n):
         img = cv2.imread(s["file_name"])
-        v = Visualizer(img[:,:,::-1], metadata=dataset_custom_metadata, scale=0.5)
+        v = Visualizer(img[:, :, ::-1], metadata=dataset_custom_metadata, scale=0.5)
         v = v.draw_dataset_dict(s)
-        plt.figure(figsize=(15,20))
+        plt.figure(figsize=(15, 20))
         plt.imshow(v.get_image())
         plt.show()
 
-def get_train_cfg(config_file_path, checkpoint_url, train_dataset_name, test_dataset_name, num_classes, device, output_dir):
+
+def get_train_cfg(config_file_path, checkpoint_url, train_dataset_name, test_dataset_name, num_classes, device,
+                  output_dir):
     cfg = get_cfg()
     cfg.merge_from_file(model_zoo.get_config_file(config_file_path))
     cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(checkpoint_url)
@@ -63,11 +68,13 @@ def get_train_cfg(config_file_path, checkpoint_url, train_dataset_name, test_dat
     cfg.OUTPUT_DIR = output_dir
     return cfg
 
+
 def on_Image(image_path, predictor):
-    loc = []
-    # class_names = ['doudou', 'falingwen', 'meimao', 'moouxian', 'nose']
+    # 1.口角纹：Mouth and corner lines  2.法令纹：Nasal pattern 3.鱼尾纹：Crow’s feet
+    # 4.眼袋：Bags under the eyes # 5.抬头纹：forehead lines 6.印第安纹：Indian pattern
+    # 7.黑眼圈：Dark circles 8.眼周细纹：Fine lines around the eyes # 9.泪沟：Tear trough
     class_names = ["Bags under the eyes", "Crow feet", "Dark circles", "Fine lines around the eyes",
-               "Indian pattern", "Mouth and corner lines", "Nasal pattern", "Tear trough", "forehead lines"]
+                   "Indian pattern", "Mouth and corner lines", "Nasal pattern", "Tear trough", "forehead lines"]
 
     outputs = predictor(image_path)
 
@@ -93,19 +100,26 @@ def on_Image(image_path, predictor):
     Only available for drawing per-instance mask predictions.
     """
 
-    v = Visualizer(image_path[:,:,::-1], metadata={'thing_classes':class_names}, scale=0.5, instance_mode = ColorMode.SEGMENTATION)
+    v = Visualizer(image_path[:, :, ::-1], metadata={'thing_classes': class_names},
+                   scale=0.5, instance_mode=ColorMode.SEGMENTATION)
     # print(type(v))
     v = v.draw_instance_predictions(outputs["instances"].to("cpu"))
     # gray = cv2.cvtColor(v.get_image(), cv2.COLOR_BGR2GRAY)
     img_np = cv2.cvtColor(v.get_image(), cv2.COLOR_BGR2RGB)
-    for box, class_name,scores in zip(getattr(outputs["instances"].pred_boxes, "tensor"),outputs["instances"].pred_classes,outputs["instances"].scores):
+
+    # 对指定类别的皱纹进行特殊处理，加入索贝算子突出皱纹的纹路
+    # 这套逻辑有点问题，
+    loc = []  # 存放特定皱纹的矩形框坐标
+    for box, class_name, scores in zip(getattr(outputs["instances"].pred_boxes, "tensor"),
+                                       outputs["instances"].pred_classes,
+                                       outputs["instances"].scores):
         if class_name == 1 or 8 or 3:
             loc.append(box)
     two_dim_coords = []
     for i in loc:
-        a = [int(i[0]),int(i[1])]
-        b = [int(i[2]),int(i[3])]
-        two_dim_coords.append([a,b])
+        a = [int(i[0]), int(i[1])]
+        b = [int(i[2]), int(i[3])]
+        two_dim_coords.append([a, b])
 
     # 对矩形框内的像素进行处理
     for i in two_dim_coords:
@@ -121,11 +135,10 @@ def on_Image(image_path, predictor):
         #         # 在这里对像素进行处理，这里示例为将像素设为纯黑色
         #         image[x, y] = (0, 0, 0)
         gray = cv2.cvtColor(image_path, cv2.COLOR_BGR2GRAY)
-        edges = cv2.Canny(gray[int(x1/2):int(x2/2), int(y1/2):int(y2/2)], 30, 10)  # 参数可以根据具体情况调整
+        edges = cv2.Canny(gray[int(x1 / 2):int(x2 / 2), int(y1 / 2):int(y2 / 2)], 30, 10)  # 参数可以根据具体情况调整
         coordinates = np.where(edges == 255)
-        aa = img_np.shape[1] - coordinates[0] - x1/2
-        bb = img_np.shape[0] - coordinates[1] - y1/2
-
+        aa = img_np.shape[1] - coordinates[0] - x1 / 2
+        bb = img_np.shape[0] - coordinates[1] - y1 / 2
 
         for x, y in zip(aa, bb):
             # print(x,y)
@@ -134,6 +147,7 @@ def on_Image(image_path, predictor):
     image = Image.fromarray(img_np)
 
     return pred_boxes, pred_classes, pred_scores, image
+
 
 def on_Video(videoPath, predictor):
     class_names = ["five", "four", "one", "three", "two"]
@@ -145,7 +159,8 @@ def on_Video(videoPath, predictor):
     (success, image) = cap.read()
     while success:
         predictions = predictor(image)
-        v = Visualizer(image[:,:,::-1], metadata={'thing_classes':class_names}, scale=0.5 ,instance_mode = ColorMode.SEGMENTATION)
+        v = Visualizer(image[:, :, ::-1], metadata={'thing_classes': class_names}, scale=0.5,
+                       instance_mode=ColorMode.SEGMENTATION)
         output = v.draw_instance_predictions(predictions["instances"].to("cpu"))
 
         # cv2.imread("Reuslt", output.get_image()[:,:,::-1])
@@ -153,11 +168,10 @@ def on_Video(videoPath, predictor):
         # cv2.resizeWindow("result", 1200, 600)
 
         #调用电脑摄像头进行检测
-        cv2.namedWindow("result", cv2.WINDOW_FREERATIO) # 设置输出框的大小，参数WINDOW_FREERATIO表示自适应大小
-        cv2.imshow("result" , output.get_image()[:,:,::-1])
+        cv2.namedWindow("result", cv2.WINDOW_FREERATIO)  # 设置输出框的大小，参数WINDOW_FREERATIO表示自适应大小
+        cv2.imshow("result", output.get_image()[:, :, ::-1])
 
         key = cv2.waitKey(1) & 0xFF
         if key == ord("q"):
             break
         (success, image) = cap.read()
-
