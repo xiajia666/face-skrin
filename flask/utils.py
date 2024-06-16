@@ -99,7 +99,7 @@ def on_Image(image_path, predictor):
     # gray = cv2.cvtColor(v.get_image(), cv2.COLOR_BGR2GRAY)
     img_np = cv2.cvtColor(v.get_image(), cv2.COLOR_BGR2RGB)
     for box, class_name,scores in zip(getattr(outputs["instances"].pred_boxes, "tensor"),outputs["instances"].pred_classes,outputs["instances"].scores):
-        if class_name == 1 or 8:
+        if class_name == 1 or 8 or 3:
             loc.append(box)
     two_dim_coords = []
     for i in loc:
@@ -121,7 +121,7 @@ def on_Image(image_path, predictor):
         #         # 在这里对像素进行处理，这里示例为将像素设为纯黑色
         #         image[x, y] = (0, 0, 0)
         gray = cv2.cvtColor(image_path, cv2.COLOR_BGR2GRAY)
-        edges = cv2.Canny(gray[int(x1/2):int(x2/2), int(y1/2):int(y2/2)], 50, 10)  # 参数可以根据具体情况调整
+        edges = cv2.Canny(gray[int(x1/2):int(x2/2), int(y1/2):int(y2/2)], 30, 10)  # 参数可以根据具体情况调整
         coordinates = np.where(edges == 255)
         aa = img_np.shape[1] - coordinates[0] - x1/2
         bb = img_np.shape[0] - coordinates[1] - y1/2

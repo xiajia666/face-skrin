@@ -18,7 +18,8 @@ from detectron2.engine import DefaultPredictor
 import base64
 import pickle
 from utils import on_Image
-
+import logging
+from logging.handlers import RotatingFileHandler
 cfg_save_path = "OD_cfg.pickle"
 
 with open(cfg_save_path, 'rb') as f:
@@ -62,6 +63,29 @@ def validate(args):
         if key not in args:
             return ValueError(message)
 
+def setup_logging():
+    handler = RotatingFileHandler('./logs/app.log', maxBytes=10000, backupCount=3)
+    handler.setLevel(logging.ERROR)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    app.logger.addHandler(handler)
+
+
+setup_logging()
+
+
+# 自定义错误处理
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # 记录错误日志
+    app.logger.error('Unhandled Exception: %s', e, exc_info=True)
+
+    # 返回通用的错误响应，客户端不显示具体的报错信息
+    response = {
+        "success": False,
+        "message": "An error occurred, please try again later."
+    }
+    return jsonify(response), 500
 
 
 
@@ -71,66 +95,62 @@ def index():
 
 @app.route('/get_data', methods=['POST'])
 def get_data():
-    res = []
     if request.method != 'POST':
         return jsonify({'error': 'Only POST requests are allowed'}), 400
 
     if validate(request.json):
         return jsonify({'error': 'Parameters {}'.format(validate(request.json))}), 400
 
-    try:
-        saveUrlPrefix = "skinrun-face/" + time.strftime('%Y%m%d', time.localtime()) + "/" + \
-                          str(request.json['img_original']) + "/" + \
-                        str(request.json['img_type']) + "/"
-        img_url = request.json['img_url']
-        local_file = (bucket.get_object(img_url)).read()
-        img_array = np.asarray(bytearray(local_file), dtype=np.uint8)
-        img_np = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
-        img_np = cv2.cvtColor(img_np, cv2.COLOR_BGR2RGB)
+    saveUrlPrefix = "skinrun-face/" + time.strftime('%Y%m%d', time.localtime()) + "/" + \
+                    str(request.json['img_original']) + "/" + \
+                    str(request.json['img_type']) + "/"
+    img_url = request.json['img_url']
+    local_file = (bucket.get_object(img_url)).read()
+    img_array = np.asarray(bytearray(local_file), dtype=np.uint8)
+    img_np = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+    img_np = cv2.cvtColor(img_np, cv2.COLOR_BGR2RGB)
 
-        # ------------------------- 识别图像 -----------------------
-        pred_boxes, pred_classes, pred_scores, image = on_Image(img_np, predictor)
-        img_byte_arr = io.BytesIO()
-        image.save(img_byte_arr, format='JPEG')
-        img_byte_arr = img_byte_arr.getvalue()
-        if bucket.object_exists(saveUrlPrefix + "RecognitionImg.jpg"):
-            # 删除文件
-            bucket.delete_object(saveUrlPrefix + "RecognitionImg.jpg")
-        bucket.put_object(saveUrlPrefix + "RecognitionImg.jpg", img_byte_arr)
+    # ------------------------- 识别图像 -----------------------
+    pred_boxes, pred_classes, pred_scores, image = on_Image(img_np, predictor)
+    img_byte_arr = io.BytesIO()
+    image.save(img_byte_arr, format='JPEG')
+    img_byte_arr = img_byte_arr.getvalue()
+    if bucket.object_exists(saveUrlPrefix + "RecognitionImg.jpg"):
+        # 删除文件
+        bucket.delete_object(saveUrlPrefix + "RecognitionImg.jpg")
+    bucket.put_object(saveUrlPrefix + "RecognitionImg.jpg", img_byte_arr)
 
-        # ------------------------- 肤色 -----------------------
-        color = face_text.colorList().get_color(img_np, face_detect)  # 肤色
+    # ------------------------- 肤色 -----------------------
+    color = face_text.colorList().get_color(img_np, face_detect)  # 肤色
 
-        # ------------------------- 轮廓 -----------------------
-        allPoints, contourPoints, imageContour = face_text.contour().contourImg(img_np, predictor_path)
-        img_byte_arr = io.BytesIO()
-        imageContour.save(img_byte_arr, format='JPEG')
-        img_byte_arr = img_byte_arr.getvalue()
-        if bucket.object_exists(saveUrlPrefix + "ContourImg.jpg"):
-            # 删除文件
-            bucket.delete_object(saveUrlPrefix + "ContourImg.jpg")
-        bucket.put_object(saveUrlPrefix + "ContourImg.jpg", img_byte_arr)
+    # ------------------------- 轮廓 -----------------------
+    allPoints, contourPoints, imageContour = face_text.contour().contourImg(img_np, predictor_path)
+    img_byte_arr = io.BytesIO()
+    imageContour.save(img_byte_arr, format='JPEG')
+    img_byte_arr = img_byte_arr.getvalue()
+    if bucket.object_exists(saveUrlPrefix + "ContourImg.jpg"):
+        # 删除文件
+        bucket.delete_object(saveUrlPrefix + "ContourImg.jpg")
+    bucket.put_object(saveUrlPrefix + "ContourImg.jpg", img_byte_arr)
 
-        # ------------------------- 敏感肌 -----------------------
-        sensitiveSkinImg = face_text.sensitiveSkin().sensitiveSkinImg(img_np)
-        img_byte_arr = io.BytesIO()
-        sensitiveSkinImg.save(img_byte_arr, format='JPEG')
-        img_byte_arr = img_byte_arr.getvalue()
-        if bucket.object_exists(saveUrlPrefix + "sensitiveSkinImg.jpg"):
-            # 删除文件
-            bucket.delete_object(saveUrlPrefix + "sensitiveSkinImg.jpg")
-        bucket.put_object(saveUrlPrefix + "sensitiveSkinImg.jpg", img_byte_arr)
+    # ------------------------- 敏感肌 -----------------------
+    sensitiveSkinImg = face_text.sensitiveSkin().sensitiveSkinImg(img_np)
+    img_byte_arr = io.BytesIO()
+    sensitiveSkinImg.save(img_byte_arr, format='JPEG')
+    img_byte_arr = img_byte_arr.getvalue()
+    if bucket.object_exists(saveUrlPrefix + "sensitiveSkinImg.jpg"):
+        # 删除文件
+        bucket.delete_object(saveUrlPrefix + "sensitiveSkinImg.jpg")
+    bucket.put_object(saveUrlPrefix + "sensitiveSkinImg.jpg", img_byte_arr)
 
-        return jsonify({"status_code": "200",
-                        "message": "操作成功",
-                        "response_data": {'pred_classes': pred_classes, 'pred_scores': pred_scores, 'color': color,
-                                          "image_url": {
-                                              "image_contour_url": saveUrlPrefix + "ContourImg.jpg",
-                                              "image_sensitive_url": saveUrlPrefix + "sensitiveSkinImg.jpg",
-                                              "image_recognition_url": saveUrlPrefix + "RecognitionImg.jpg",
-                                          }}})
-    except:
-        return jsonify({"status_code": "400", "message": "请求失败", "response_data": {}})
+    return jsonify({"status_code": "200",
+                    "message": "操作成功",
+                    "response_data": {'pred_classes': pred_classes, 'pred_scores': pred_scores, 'color': color,
+                                      "image_url": {
+                                          "image_contour_url": saveUrlPrefix + "ContourImg.jpg",
+                                          "image_sensitive_url": saveUrlPrefix + "sensitiveSkinImg.jpg",
+                                          "image_recognition_url": saveUrlPrefix + "RecognitionImg.jpg",
+                                      }}})
 
 @app.route('/ContourImg.jpg', methods=['GET'])
 def getContourImg():
