@@ -214,31 +214,30 @@ class sensitiveSkin:
 
         return result
 
-    def sensitiveSkinImg(self, imgPath):
-        # 加载RGB图像
-        rgb_image = imgPath
+    def sensitiveSkinImg(self, image_path):
+        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_alt2.xml')
+        gray = cv2.cvtColor(image_path, cv2.COLOR_BGR2GRAY)
+        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+        # print(faces.parts())
 
-        # 设置阈值范围
-        h_min, s_min, v_min = 0, 30, 100
-        h_max, s_max, v_max = 30, 165, 195
+        # 转换到HSV色彩空间
+        hsv_image = cv2.cvtColor(image_path, cv2.COLOR_BGR2HSV)
 
-        # 定义颜色
-        in_range_color = np.array([0, 255, 255])  # 在范围内的像素点的颜色
-        out_of_range_color = np.array([0, 0, 255])  # 不在范围内的像素点的颜色
+        # 定义皮肤颜色的大致范围
+        # lower_skin = np.array([0, 50, 60], dtype=np.uint8)
+        # upper_skin = np.array([20, 255, 255], dtype=np.uint8)
+        lower_skin = np.array([0, 50, 70], dtype=np.uint8)
+        upper_skin = np.array([15, 255, 255], dtype=np.uint8)
 
-        # 进行HSV图像的阈值分割并设定颜色
-        result = self.hsv_threshold(rgb_image, h_min, s_min, v_min, h_max, s_max, v_max, in_range_color,
-                                    out_of_range_color)
+        # 创建遮罩，只保留皮肤颜色的部分
+        mask = cv2.inRange(hsv_image, lower_skin, upper_skin)
+        # 将mask从灰度图像转换为彩色图像
+        color_mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
 
-        # 将结果转换为BGR格式以便显示
-        result_bgr = cv2.cvtColor(result, cv2.COLOR_HSV2BGR)
-
-        # 将掩膜图像与原图融合
-        blended_image = cv2.addWeighted(rgb_image, 0.3, result_bgr, 0.7, 0)
-
-        # 将图像缩小60%
-        scaled_result = cv2.resize(blended_image, None, fx=0.4, fy=0.4)
-        imageSensitiveSkin = Image.fromarray(scaled_result)
-
-        # 显示结果图像
-        return imageSensitiveSkin
+        # 将掩码的颜色改变为蓝色
+        color_mask[np.where((color_mask == [0, 0, 0]).all(axis=2))] = [0, 0, 255]  # 将白色部分（皮肤）改为蓝色
+        # cv2.namedWindow('1', cv2.WINDOW_NORMAL)
+        # cv2.resizeWindow('1', 800, 600)
+        # cv2.imshow('1', color_mask)
+        skin_only = cv2.bitwise_and(image_path, color_mask)
+        return skin_only
