@@ -215,13 +215,13 @@ class sensitiveSkin:
         return result
 
     def sensitiveSkinImg(self, image_path):
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_alt2.xml')
-        gray = cv2.cvtColor(image_path, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+        # face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_alt2.xml')
+        # gray = cv2.cvtColor(image_path, cv2.COLOR_BGR2GRAY)
+        # faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
         # print(faces.parts())
 
         # 转换到HSV色彩空间
-        hsv_image = cv2.cvtColor(image_path, cv2.COLOR_BGR2HSV)
+        hsv_image = cv2.cvtColor(image_path, cv2.COLOR_RGB2HSV)
 
         # 定义皮肤颜色的大致范围
         # lower_skin = np.array([0, 50, 60], dtype=np.uint8)
@@ -235,9 +235,10 @@ class sensitiveSkin:
         color_mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
 
         # 将掩码的颜色改变为蓝色
-        color_mask[np.where((color_mask == [0, 0, 0]).all(axis=2))] = [0, 0, 255]  # 将白色部分（皮肤）改为蓝色
+        color_mask[np.where((color_mask == [0, 0, 0]).all(axis=2))] = [255, 0, 0]  # 将白色部分（皮肤）改为蓝色
         # cv2.namedWindow('1', cv2.WINDOW_NORMAL)
         # cv2.resizeWindow('1', 800, 600)
         # cv2.imshow('1', color_mask)
         skin_only = cv2.bitwise_and(image_path, color_mask)
-        return skin_only
+        image = Image.fromarray(skin_only)
+        return image
