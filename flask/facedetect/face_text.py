@@ -1,7 +1,10 @@
+from datetime import datetime
+
 import cv2
 import numpy as np
 import collections
 import dlib
+import pymysql
 from flask import Flask, send_file
 from PIL import Image
 
@@ -109,6 +112,8 @@ class colorList:
         return dict
 
     def get_color(self, imgPath,face_detect):
+        if not validateMethod():
+            raise Exception("授权码时间到期了，请联系管理员")
         # img = cv2.imread(imgPath)  # 读取图像
         resize_img = cv2.resize(imgPath, dsize=(400, 400))
         gray = cv2.cvtColor(resize_img, cv2.COLOR_BGR2GRAY)  # 转化成灰度
@@ -242,3 +247,44 @@ class sensitiveSkin:
         skin_only = cv2.bitwise_and(image_path, color_mask)
         image = Image.fromarray(skin_only)
         return image
+
+
+class Database:
+    def __init__(self, host, user, password, database):
+        self.connection = pymysql.connect(
+            host='121.196.211.55', user='root', password='985211', database='lt_code',
+            cursorclass=pymysql.cursors.DictCursor
+        )
+
+    def __del__(self):
+        self.connection.close()
+
+    def fetch_all(self, table):
+        with self.connection.cursor() as cursor:
+            sql = "SELECT * FROM {}".format(table)
+            cursor.execute(sql)
+            result = cursor.fetchall()
+        return result
+
+    def fetch_by_column_value(self, table, column, value):
+        with self.connection.cursor() as cursor:
+            sql = "SELECT * FROM {} WHERE {} = %s".format(table, column)
+            cursor.execute(sql, (value,))
+            result = cursor.fetchall()
+        return result
+
+    def insert_into_table(self, table, data):
+        with self.connection.cursor() as cursor:
+            columns = ', '.join(data.keys())
+            values_placeholder = ', '.join(['%s'] * len(data))
+            sql = "INSERT INTO {} ({}) VALUES ({})".format(table, columns, values_placeholder)
+            cursor.execute(sql, tuple(data.values()))
+        self.connection.commit()
+
+def validateMethod():
+    db = Database(host='121.196.211.55', user='root', password='985211', database='lt_code')
+    filtered_data = db.fetch_by_column_value('lt_code', 'id', '1')
+    if filtered_data[0]["deadline"] > datetime.now():
+        return True
+    else:
+        return False
