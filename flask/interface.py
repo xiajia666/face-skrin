@@ -114,8 +114,8 @@ def get_data():
     img_np = cv2.cvtColor(img_np, cv2.COLOR_BGR2RGB)
 
     # ------------------------- 识别图像 -----------------------
-    pred_boxes, pred_classes, pred_scores, image = on_Image(img_np, predictor)
-    pred_classes = calcLeftRight(image.size, pred_boxes, pred_classes)
+    pred_boxes, pred_boxes_array, pred_classes, pred_classes_array,  pred_scores, image = on_Image(img_np, predictor)
+    pred_classes = calcLeftRight(image.size, pred_boxes_array, pred_classes_array)
     img_byte_arr = io.BytesIO()
     image.save(img_byte_arr, format='JPEG')
     img_byte_arr = img_byte_arr.getvalue()

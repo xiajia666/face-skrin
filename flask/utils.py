@@ -85,6 +85,8 @@ def on_Image(image_path, predictor):
     pred_classes = tensor_to_json(outputs["instances"].pred_classes)
     pred_scores = tensor_to_json(outputs["instances"].scores)
     # print(pred_scores, pred_classes, pred_scores)
+    pred_classes_array = outputs["instances"].pred_classes.cpu().numpy()
+    pred_boxes_array = getattr(outputs["instances"].pred_boxes, "tensor").cpu().numpy()
 
     # instance_mode:
     IMAGE = 0
@@ -173,7 +175,7 @@ def on_Image(image_path, predictor):
         img_np = cv2.addWeighted(img_np, 1, transparent_image, 0.6, 0)
 
     image = Image.fromarray(img_np)
-    return pred_boxes, pred_classes, pred_scores, image
+    return pred_boxes, pred_boxes_array, pred_classes, pred_classes_array, pred_scores, image
 
 
 def on_Video(videoPath, predictor):
@@ -211,6 +213,6 @@ def calcLeftRight(imageSize, pred_boxes, pred_classes):
     # upOrDown = imageSize[1] / 2  # 上下
     predBoxesNew = []
     for i, j in zip(pred_boxes, pred_classes):
-        Label = 'Left' if leftOrRight >= i[0] + i[2] else 'Right'
+        Label = 'Left' if leftOrRight >= 0.5 * (i[0] + i[2]) else 'Right'
         predBoxesNew.append(Label + " : " + str(j))
     return predBoxesNew
