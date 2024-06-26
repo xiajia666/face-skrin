@@ -18,7 +18,7 @@ from numpy import shape
 from detectron2.engine import DefaultPredictor
 import base64
 import pickle
-from utils import on_Image
+from utils import on_Image,calcLeftRight
 import logging
 from logging.handlers import RotatingFileHandler
 cfg_save_path = "OD_cfg.pickle"
@@ -115,6 +115,7 @@ def get_data():
 
     # ------------------------- 识别图像 -----------------------
     pred_boxes, pred_classes, pred_scores, image = on_Image(img_np, predictor)
+    pred_classes = calcLeftRight(image.size, pred_boxes, pred_classes)
     img_byte_arr = io.BytesIO()
     image.save(img_byte_arr, format='JPEG')
     img_byte_arr = img_byte_arr.getvalue()

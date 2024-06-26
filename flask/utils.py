@@ -30,6 +30,8 @@ def tensor_to_json(data):
     # 转换为 JSON 字符串
     tensor_json = json.dumps(tensor_list)
     return tensor_json
+
+
 # 切换为图形界面显示的终端TkAgg
 matplotlib.use('TkAgg')
 
@@ -108,12 +110,12 @@ def on_Image(image_path, predictor):
     # gray = cv2.cvtColor(v.get_image(), cv2.COLOR_BGR2GRAY)
     img_np = cv2.cvtColor(v.get_image(), cv2.COLOR_BGR2RGB)
 
-# -------------------------对指定类别的皱纹进行特殊处理，加入索贝算子突出皱纹的纹路---------------------------------------------------------
+    # -------------------------对指定类别的皱纹进行特殊处理，加入索贝算子突出皱纹的纹路---------------------------------------------------------
     loc = []  # 存放特定皱纹的矩形框坐标
     for box, class_name, scores in zip(getattr(outputs["instances"].pred_boxes, "tensor"),
                                        outputs["instances"].pred_classes,
                                        outputs["instances"].scores):
-        if class_name == 3:   # 3表示眼袋
+        if class_name == 3:  # 3表示眼袋
             loc.append(box)
     two_dim_coords = []
     for i in loc:
@@ -144,14 +146,12 @@ def on_Image(image_path, predictor):
             # print(x,y)
             img_np[int(-y), int(-x)] = (255, 0, 0)
 
-
     height, width = img_np.shape[:2]
     new_size = (width * 2, height * 2)
     # 像素提高两倍，还原为输入图像相同的规格
     img_np = cv2.resize(img_np, new_size, interpolation=cv2.INTER_NEAREST)
 
-
-# ----------------- 启动蒙版处理-----------------
+    # ----------------- 启动蒙版处理-----------------
     if len(outputs["instances"].pred_classes) != 0:
         # 创建一个全透明的图像
         transparent_image = np.zeros((height * 2, width * 2, 3), dtype=np.uint8)
@@ -166,7 +166,8 @@ def on_Image(image_path, predictor):
                 mask = np.zeros_like(transparent_image)
                 mask[y1:y2, x1:x2, :] = 1
                 # 设置框外的区域透明度为90%
-                transparent_image = transparent_image * (1 - mask * 0.9) + mask * transparent_image # mask系数越大，透明度越小，0.9越小，越透明
+                transparent_image = transparent_image * (
+                            1 - mask * 0.9) + mask * transparent_image  # mask系数越大，透明度越小，0.9越小，越透明
                 transparent_image = transparent_image.astype(np.uint8)
         # 将蒙版应用到图像
         img_np = cv2.addWeighted(img_np, 1, transparent_image, 0.6, 0)
@@ -201,3 +202,15 @@ def on_Video(videoPath, predictor):
         if key == ord("q"):
             break
         (success, image) = cap.read()
+
+
+# -------------------  计算皱纹是左边还是右边-------------------
+# -------------------框坐标是对角两个点的坐标，以图像左上角为坐标远点 -----------------------
+def calcLeftRight(imageSize, pred_boxes, pred_classes):
+    leftOrRight = imageSize[0] / 2  # 左右
+    # upOrDown = imageSize[1] / 2  # 上下
+    predBoxesNew = []
+    for i, j in zip(pred_boxes, pred_classes):
+        Label = 'Left' if leftOrRight >= i[0] + i[2] else 'Right'
+        predBoxesNew.append(Label + " : " + str(j))
+    return predBoxesNew
