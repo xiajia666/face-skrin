@@ -152,23 +152,24 @@ def on_Image(image_path, predictor):
 
 
 # ----------------- 启动蒙版处理-----------------
-    # 创建一个全透明的图像
-    transparent_image = np.zeros((height * 2, width * 2, 3), dtype=np.uint8)
-    transparent_image[:, :, :] = 255  # 设置为全白，即完全不透明
+    if len(outputs["instances"].pred_classes) != 0:
+        # 创建一个全透明的图像
+        transparent_image = np.zeros((height * 2, width * 2, 3), dtype=np.uint8)
+        transparent_image[:, :, :] = 255  # 设置为全白，即完全不透明
 
-    # 根据框的位置来绘制蒙版
-    for i in getattr(outputs["instances"].pred_boxes, "tensor").cpu().numpy():
-        for x1, y1, x2, y2 in [i]:
-            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-            # 将框内的区域设置为完全不透明
-            transparent_image[y1:y2, x1:x2, :] = 255
-            mask = np.zeros_like(transparent_image)
-            mask[y1:y2, x1:x2, :] = 1
-            # 设置框外的区域透明度为90%
-            transparent_image = transparent_image * (1 - mask * 0.9) + mask * transparent_image # mask系数越大，透明度越小，0.9越小，越透明
-            transparent_image = transparent_image.astype(np.uint8)
-    # 将蒙版应用到图像
-    img_np = cv2.addWeighted(img_np, 1, transparent_image, 0.6, 0)
+        # 根据框的位置来绘制蒙版
+        for i in getattr(outputs["instances"].pred_boxes, "tensor").cpu().numpy():
+            for x1, y1, x2, y2 in [i]:
+                x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+                # 将框内的区域设置为完全不透明
+                transparent_image[y1:y2, x1:x2, :] = 255
+                mask = np.zeros_like(transparent_image)
+                mask[y1:y2, x1:x2, :] = 1
+                # 设置框外的区域透明度为90%
+                transparent_image = transparent_image * (1 - mask * 0.9) + mask * transparent_image # mask系数越大，透明度越小，0.9越小，越透明
+                transparent_image = transparent_image.astype(np.uint8)
+        # 将蒙版应用到图像
+        img_np = cv2.addWeighted(img_np, 1, transparent_image, 0.6, 0)
 
     image = Image.fromarray(img_np)
     return pred_boxes, pred_classes, pred_scores, image
