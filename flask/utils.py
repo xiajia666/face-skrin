@@ -80,6 +80,7 @@ def on_Image(image_path, predictor):
                    "Indian pattern", "Mouth and corner lines", "Nasal pattern", "Tear trough", "forehead lines"]
 
     outputs = predictor(image_path)
+    img_np_copy = image_path.copy()
 
     pred_boxes = tensor_to_json(getattr(outputs["instances"].pred_boxes, "tensor"))
     pred_classes = tensor_to_json(outputs["instances"].pred_classes)
@@ -174,7 +175,11 @@ def on_Image(image_path, predictor):
         # 将蒙版应用到图像
         img_np = cv2.addWeighted(img_np, 1, transparent_image, 0.6, 0)
 
-    image = Image.fromarray(img_np)
+    #--------------------------- 单独画框 ----------------------------
+    img_another = boxesToImage(pred_boxes_array, img_np_copy)
+
+    # image = Image.fromarray(img_np)
+    image = Image.fromarray(img_another)
     return pred_boxes, pred_boxes_array, pred_classes, pred_classes_array, pred_scores, image
 
 
@@ -216,3 +221,13 @@ def calcLeftRight(imageSize, pred_boxes, pred_classes):
         Label = 'Left' if leftOrRight >= 0.5 * (i[0] + i[2]) else 'Right'
         predBoxesNew.append(Label + " : " + str(j))
     return predBoxesNew
+
+
+def boxesToImage(boxes, image):
+    for box in boxes:
+        x1, y1, x2, y2 = box
+        x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+        r, g, b, = random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)
+        # 绘制矩形框
+        cv2.rectangle(image, (x1, y1), (x2, y2), (r, g, b), 3)  # (0, 0, 255) 是红色, 2 是线条的厚度
+    return image
