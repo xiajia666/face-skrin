@@ -18,7 +18,7 @@ from numpy import shape
 from detectron2.engine import DefaultPredictor
 import base64
 import pickle
-from utils import on_Image,calcLeftRight
+from utils import on_Image, calcLeftRight
 import logging
 from logging.handlers import RotatingFileHandler
 cfg_save_path = "OD_cfg.pickle"
@@ -114,8 +114,8 @@ def get_data():
     img_np = cv2.cvtColor(img_np, cv2.COLOR_BGR2RGB)
 
     # ------------------------- 识别图像 -----------------------
-    pred_boxes, pred_boxes_array, pred_classes, pred_classes_array,  pred_scores, image = on_Image(img_np, predictor)
-    pred_classes = calcLeftRight(image.size, pred_boxes_array, pred_classes_array)
+    pred_boxes, pred_boxes_array, pred_classes, pred_classes_array, pred_scores, pred_scores_array, image = on_Image(img_np, predictor)
+    pred_classes, predBoxesNew = calcLeftRight(image.size, pred_boxes_array, pred_classes_array, pred_scores_array)
     img_byte_arr = io.BytesIO()
     image.save(img_byte_arr, format='JPEG')
     img_byte_arr = img_byte_arr.getvalue()
@@ -149,12 +149,28 @@ def get_data():
 
     return jsonify({"status_code": "200",
                     "message": "操作成功",
-                    "response_data": {'pred_classes': pred_classes, 'pred_scores': pred_scores, 'color': color,
-                                      "image_url": {
-                                          "image_contour_url": saveUrlPrefix + "ContourImg.jpg",
-                                          "image_sensitive_url": saveUrlPrefix + "sensitiveSkinImg.jpg",
-                                          "image_recognition_url": saveUrlPrefix + "RecognitionImg.jpg",
-                                      }}})
+                    "response_data": {"skin:'2a'": {"box_number": len(pred_classes),
+                                                    'score_box': predBoxesNew,
+                                                    'pred_classes': pred_classes,
+                                                    'color': color,
+                                                    "label_imag": {
+                                                        "image_recognition_url": saveUrlPrefix + "RecognitionImg.jpg",
+                                                                  }
+                                                    },
+                                      "skin:'8a'": {
+                                          "label_imag": {
+                                              "image_sensitive_url": saveUrlPrefix + "sensitiveSkinImg.jpg"
+                                                        }
+                                                   },
+                                      "skin:'11a'": {
+                                          "label_imag": {
+                                              "image_contour_url": saveUrlPrefix + "ContourImg.jpg"
+                                                        }
+                                                     },
+
+
+                                      }})
+
 
 @app.route('/ContourImg.jpg', methods=['GET'])
 def getContourImg():

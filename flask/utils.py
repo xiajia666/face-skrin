@@ -1,3 +1,4 @@
+import configparser
 import numpy as np
 from PIL import Image
 from numpy import shape
@@ -87,7 +88,8 @@ def on_Image(image_path, predictor):
     pred_scores = tensor_to_json(outputs["instances"].scores)
     # print(pred_scores, pred_classes, pred_scores)
     pred_classes_array = outputs["instances"].pred_classes.cpu().numpy()
-    pred_boxes_array = getattr(outputs["instances"].pred_boxes, "tensor").cpu().numpy()
+    pred_boxes_array = numpy.around(getattr(outputs["instances"].pred_boxes, "tensor").cpu().numpy())
+    pred_scores_array = numpy.around(outputs["instances"].scores.cpu().numpy(), 2)
 
     # instance_mode:
     IMAGE = 0
@@ -180,7 +182,7 @@ def on_Image(image_path, predictor):
 
     # image = Image.fromarray(img_np)
     image = Image.fromarray(img_another)
-    return pred_boxes, pred_boxes_array, pred_classes, pred_classes_array, pred_scores, image
+    return pred_boxes, pred_boxes_array, pred_classes, pred_classes_array, pred_scores, pred_scores_array, image
 
 
 def on_Video(videoPath, predictor):
@@ -213,14 +215,21 @@ def on_Video(videoPath, predictor):
 
 # -------------------  计算皱纹是左边还是右边-------------------
 # -------------------框坐标是对角两个点的坐标，以图像左上角为坐标远点 -----------------------
-def calcLeftRight(imageSize, pred_boxes, pred_classes):
+def calcLeftRight(imageSize, pred_boxes_array, pred_classes, pred_scores_array):
+    config = configparser.ConfigParser()
+    config.read('./config/classes.ini')
     leftOrRight = imageSize[0] / 2  # 左右
     # upOrDown = imageSize[1] / 2  # 上下
+    predClassesNew = []
     predBoxesNew = []
-    for i, j in zip(pred_boxes, pred_classes):
+    for i, j, k in zip(pred_boxes_array, pred_classes, pred_scores_array):
         Label = 'Left' if leftOrRight >= 0.5 * (i[0] + i[2]) else 'Right'
-        predBoxesNew.append(Label + " : " + str(j))
-    return predBoxesNew
+        # classes = config.get("classes", str("class_{}".format(j)))
+        classes = "special: {}".format(j)
+        predClassesNew.append(Label + " : " + classes + " : " + str(k))
+        predBoxesNew.append("score" + ":" + str(k) + " ; " 
+                            "box" + ":" + str(i))
+    return predClassesNew, predBoxesNew
 
 
 def boxesToImage(boxes, image):
