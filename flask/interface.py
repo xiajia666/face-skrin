@@ -58,7 +58,7 @@ app.config['JSON_AS_ASCII'] = False
 def validate(args):
     validations = {
         'img_url': 'img_url is required',
-        'id': 'id is required'
+        # 'id': 'id is required'
     }
     for key, message in validations.items():
         if key not in args:
