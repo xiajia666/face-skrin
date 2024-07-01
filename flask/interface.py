@@ -149,27 +149,26 @@ def get_data():
 
     return jsonify({"status_code": "200",
                     "message": "操作成功",
-                    "response_data": {"skin:2a": {"box_number": len(pred_classes),
-                                                    'score_box': predBoxesNew,
-                                                    'pred_classes': pred_classes,
-                                                    'color': color,
-                                                    "label_imag": {
-                                                        "image_recognition_url": saveUrlPrefix + "RecognitionImg.jpg",
-                                                                  }
-                                                    },
-                                      "skin:8a": {
-                                          "label_imag": {
-                                              "image_sensitive_url": saveUrlPrefix + "sensitiveSkinImg.jpg"
-                                                        }
-                                                   },
-                                      "skin:11a": {
-                                          "label_imag": {
-                                              "image_contour_url": saveUrlPrefix + "ContourImg.jpg"
-                                                        }
+                    "response_data": {"skin_data": {{"skin": "2a",
+                                                     "box_number": len(pred_classes),
+                                                     'score_box': predBoxesNew,
+                                                     'pred_classes': pred_classes,
+                                                     'color': color,
+                                                     "label_imag": {
+                                                         "image_recognition_url": saveUrlPrefix + "RecognitionImg.jpg", }
                                                      },
-
-
-                                      }})
+                                                    {
+                                                        "skin": "8a",
+                                                        "label_imag": {
+                                                            "image_sensitive_url": saveUrlPrefix + "sensitiveSkinImg.jpg"},
+                                                    },
+                                                    {
+                                                        "skin": "11a",
+                                                        "label_imag": {
+                                                            "image_contour_url": saveUrlPrefix + "ContourImg.jpg"}
+                                                    }
+                                                    }}
+                    })
 
 
 @app.route('/ContourImg.jpg', methods=['GET'])
