@@ -149,7 +149,7 @@ def get_data():
 
     return jsonify({"status_code": "200",
                     "message": "操作成功",
-                    "response_data": {"skin_data": {{"skin": "2a",
+                    "response_data": {"skin_data": [{"skin": "2a",
                                                      "box_number": len(pred_classes),
                                                      'score_box': predBoxesNew,
                                                      'pred_classes': pred_classes,
@@ -167,7 +167,7 @@ def get_data():
                                                         "label_imag": {
                                                             "image_contour_url": saveUrlPrefix + "ContourImg.jpg"}
                                                     }
-                                                    }}
+                                                    ]}
                     })
 
 
