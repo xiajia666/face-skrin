@@ -54,6 +54,10 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['JSON_AS_ASCII'] = False
+app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 def validate(args):
     validations = {
@@ -96,8 +100,8 @@ def handle_exception(e):
 def index():
     return render_template('index.html')
 
-@app.route('/get_data', methods=['POST'])
-def get_data():
+@app.route('/getDataByOss', methods=['POST'])
+def getDataByOss():
     if request.method != 'POST':
         return jsonify({'error': 'Only POST requests are allowed'}), 400
 
@@ -171,14 +175,79 @@ def get_data():
                     })
 
 
-@app.route('/ContourImg.jpg', methods=['GET'])
-def getContourImg():
-    image_array = 'ContourImg.jpg'
+@app.route('/getDataByUpload', methods=['POST'])
+def getDataByUpload():
+    img_array = None
+    filename = ''
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part in the request'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+    if file and allowed_file(file.filename):
+        filename = file.filename
+        img_array = np.frombuffer(file.stream.read(), dtype=np.uint8)
+    img_np = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+    img_np = cv2.cvtColor(img_np, cv2.COLOR_BGR2RGB)
+    saveUrlPrefix = "skinrun-face/" + time.strftime('%Y%m%d', time.localtime()) + "/" + filename.rsplit(".")[0]
 
-    # 将数组转换为列表，以便于JSON序列化
-    # image_array_list = image_array.tolist()
+    # ------------------------- 识别图像 -----------------------
+    pred_boxes, pred_boxes_array, pred_classes, pred_classes_array, pred_scores, pred_scores_array, image = on_Image(
+        img_np, predictor)
+    pred_classes, predBoxesNew = calcLeftRight(image.size, pred_boxes_array, pred_classes_array, pred_scores_array)
+    img_byte_arr = io.BytesIO()
+    image.save(img_byte_arr, format=['JPEG', 'PNG'])
+    img_byte_arr = img_byte_arr.getvalue()
+    if bucket.object_exists(saveUrlPrefix + "RecognitionImg.jpg"):
+        # 删除文件
+        bucket.delete_object(saveUrlPrefix + "RecognitionImg.jpg")
+    bucket.put_object(saveUrlPrefix + "RecognitionImg.jpg", img_byte_arr)
 
-    return send_file(image_array, mimetype='image/jpeg')
+    # ------------------------- 肤色 -----------------------
+    color = face_text.colorList().get_color(img_np, face_detect)  # 肤色
+
+    # ------------------------- 轮廓 -----------------------
+    allPoints, contourPoints, imageContour = face_text.contour().contourImg(img_np, predictor_path)
+    img_byte_arr = io.BytesIO()
+    imageContour.save(img_byte_arr, format='JPEG')
+    img_byte_arr = img_byte_arr.getvalue()
+    if bucket.object_exists(saveUrlPrefix + "ContourImg.jpg"):
+        # 删除文件
+        bucket.delete_object(saveUrlPrefix + "ContourImg.jpg")
+    bucket.put_object(saveUrlPrefix + "ContourImg.jpg", img_byte_arr)
+
+    # ------------------------- 敏感肌 -----------------------
+    sensitiveSkinImg = face_text.sensitiveSkin().sensitiveSkinImg(img_np)
+    img_byte_arr = io.BytesIO()
+    sensitiveSkinImg.save(img_byte_arr, format='JPEG')
+    img_byte_arr = img_byte_arr.getvalue()
+    if bucket.object_exists(saveUrlPrefix + "sensitiveSkinImg.jpg"):
+        # 删除文件
+        bucket.delete_object(saveUrlPrefix + "sensitiveSkinImg.jpg")
+    bucket.put_object(saveUrlPrefix + "sensitiveSkinImg.jpg", img_byte_arr)
+
+    return jsonify({"status_code": "200",
+                    "message": "操作成功",
+                    "response_data": {"skin_data": [{"skin": "2a",
+                                                     "box_number": len(pred_classes),
+                                                     'score_box': predBoxesNew,
+                                                     'pred_classes': pred_classes,
+                                                     'color': color,
+                                                     "label_imag": {
+                                                         "image_recognition_url": saveUrlPrefix + "RecognitionImg.jpg", }
+                                                     },
+                                                    {
+                                                        "skin": "8a",
+                                                        "label_imag": {
+                                                            "image_sensitive_url": saveUrlPrefix + "sensitiveSkinImg.jpg"},
+                                                    },
+                                                    {
+                                                        "skin": "11a",
+                                                        "label_imag": {
+                                                            "image_contour_url": saveUrlPrefix + "ContourImg.jpg"}
+                                                    }
+                                                    ]}
+                    })
 
 
 
