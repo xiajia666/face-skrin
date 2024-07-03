@@ -189,14 +189,14 @@ def getDataByUpload():
         img_array = np.frombuffer(file.stream.read(), dtype=np.uint8)
     img_np = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
     img_np = cv2.cvtColor(img_np, cv2.COLOR_BGR2RGB)
-    saveUrlPrefix = "skinrun-face/" + time.strftime('%Y%m%d', time.localtime()) + "/" + filename.rsplit(".")[0]
+    saveUrlPrefix = "skinrun-face/" + time.strftime('%Y%m%d', time.localtime()) + "/" + filename.split(".")[0] + "/"
 
     # ------------------------- 识别图像 -----------------------
     pred_boxes, pred_boxes_array, pred_classes, pred_classes_array, pred_scores, pred_scores_array, image = on_Image(
         img_np, predictor)
     pred_classes, predBoxesNew = calcLeftRight(image.size, pred_boxes_array, pred_classes_array, pred_scores_array)
     img_byte_arr = io.BytesIO()
-    image.save(img_byte_arr, format=['JPEG', 'PNG'])
+    image.save(img_byte_arr, format='JPEG')
     img_byte_arr = img_byte_arr.getvalue()
     if bucket.object_exists(saveUrlPrefix + "RecognitionImg.jpg"):
         # 删除文件
