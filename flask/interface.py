@@ -262,8 +262,6 @@ def getDataByUrl():
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     # 正向人脸检测器将图像
     detector = dlib.get_frontal_face_detector()
-    # 使用训练好的68个特征点模型
-    predictor = dlib.shape_predictor(predictor_path)
     # 使用检测器来检测图像中的人脸
     faces = detector(gray, 1)
     if len(faces) != 1:
@@ -271,8 +269,8 @@ def getDataByUrl():
                         "message": "未监测到人脸或监测到多张人脸，请上传单人脸图片"}
                         )
     else:
-        (x, y, w, h) = faces
-        img_np = img[y:y + 1.1*h, x:x + 1.1*w]
+        (x, y, w, h) = int(faces[0].left()), int(faces[0].right()), int(faces[0].top()), int(faces[0].bottom())
+        img_np = img[y:y + int(1.2*h), x:x + int(1.2*w)]
         saveUrlPrefix = "skinrun-face/" + "url/" + time.strftime('%Y%m%d', time.localtime()) + "/" + name + "/"
 
         # ------------------------- 识别图像 -----------------------
@@ -291,7 +289,7 @@ def getDataByUrl():
         color = face_text.colorList().get_color(img_np, face_detect)  # 肤色
 
         # ------------------------- 轮廓 -----------------------
-        allPoints, contourPoints, imageContour = face_text.contour().contourImg(img_np, predictor_path)
+        allPoints, contourPoints, imageContour = face_text.contour().contourImg(img, predictor_path)
         img_byte_arr = io.BytesIO()
         imageContour.save(img_byte_arr, format='JPEG')
         img_byte_arr = img_byte_arr.getvalue()
