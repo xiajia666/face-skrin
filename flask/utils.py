@@ -1,5 +1,6 @@
 import configparser
 import numpy as np
+import requests
 from PIL import Image
 from numpy import shape
 from PIL import Image, ImageDraw, ImageEnhance
@@ -18,7 +19,7 @@ import cv2
 import matplotlib.pyplot as plt
 import matplotlib
 import numpy
-
+from io import BytesIO
 
 def tensor_to_json(data):
     # 将张量移动到 CPU，并转换为 NumPy 数组
@@ -240,3 +241,13 @@ def boxesToImage(boxes, image):
         # 绘制矩形框
         cv2.rectangle(image, (x1, y1), (x2, y2), (r, g, b), 3)  # (0, 0, 255) 是红色, 2 是线条的厚度
     return image
+
+
+def url_to_numpy(url):
+    response = requests.get(url)
+    # 将图片数据读取为 PIL.Image 对象
+    img = Image.open(BytesIO(response.content))
+    # 将 PIL.Image 对象转换为 NumPy 数组
+    img_array = np.array(img)
+    # 返回 NumPy 数组
+    return img_array
