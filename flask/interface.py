@@ -254,10 +254,10 @@ def getDataByUpload():
 
 @app.route('/getDataByUrl', methods=['POST'])
 def getDataByUrl():
-    url = request.json.get('url')
-    name = request.json.get('img_name')
     if validate(request.json):
         return jsonify({'error': 'Parameters {}'.format(validate(request.json))}), 400
+    url = request.json.get('img_url')
+    name = request.json.get('img_name')
     img = url_to_numpy(url)  # 这里通过url直接把图片转换成url
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     # 正向人脸检测器将图像
