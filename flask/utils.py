@@ -244,7 +244,7 @@ def boxesToImage(boxes, image):
 
 
 def url_to_numpy(url):
-    response = requests.get(url)
+    response = requests.get(url, stream=True, verify=False, timeout=3000)
     # 将图片数据读取为 PIL.Image 对象
     img = Image.open(BytesIO(response.content))
     # 将 PIL.Image 对象转换为 NumPy 数组
